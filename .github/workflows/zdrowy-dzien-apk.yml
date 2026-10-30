@@ -1,0 +1,49 @@
+name: Build Zdrowy Dzien APK
+
+on:
+  push:
+    paths:
+      - "zdrowy-dzien/**"
+      - ".github/workflows/zdrowy-dzien-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: zdrowy-dzien
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build release APK
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+          cp app/build/outputs/apk/release/app-release.apk ZdrowyDzien.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ZdrowyDzien-apk
+          path: zdrowy-dzien/ZdrowyDzien.apk
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: zdrowy-dzien-${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          name: Zdrowy Dzień ${{ github.run_number }}
+          body: |
+            Pobierz **ZdrowyDzien.apk** poniżej i otwórz plik na telefonie z Androidem (8.0+).
+            Jeśli telefon zapyta, zezwól na instalację z tego źródła.
+          files: zdrowy-dzien/ZdrowyDzien.apk
