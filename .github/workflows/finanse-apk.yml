@@ -1,0 +1,49 @@
+name: Build Moje Finanse APK
+
+on:
+  push:
+    paths:
+      - "finanse/**"
+      - ".github/workflows/finanse-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: finanse
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build release APK
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+          cp app/build/outputs/apk/release/app-release.apk MojeFinanse.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MojeFinanse-apk
+          path: finanse/MojeFinanse.apk
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: finanse-${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          name: Moje Finanse ${{ github.run_number }}
+          body: |
+            Pobierz **MojeFinanse.apk** poniżej i otwórz plik na telefonie z Androidem (8.0+).
+            Jeśli telefon zapyta, zezwól na instalację z tego źródła.
+          files: finanse/MojeFinanse.apk
