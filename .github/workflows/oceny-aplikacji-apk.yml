@@ -1,0 +1,49 @@
+name: Build Plusy i Minusy APK
+
+on:
+  push:
+    paths:
+      - "oceny-aplikacji/**"
+      - ".github/workflows/oceny-aplikacji-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: oceny-aplikacji
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build release APK
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+          cp app/build/outputs/apk/release/app-release.apk PlusyMinusy.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PlusyMinusy-apk
+          path: oceny-aplikacji/PlusyMinusy.apk
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: oceny-aplikacji-${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          name: Plusy i Minusy ${{ github.run_number }}
+          body: |
+            Pobierz **PlusyMinusy.apk** poniżej i otwórz plik na telefonie z Androidem (8.0+).
+            Jeśli telefon zapyta, zezwól na instalację z tego źródła.
+          files: oceny-aplikacji/PlusyMinusy.apk
