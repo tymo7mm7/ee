@@ -28,3 +28,9 @@ akordami, żeby odróżnić np. E od Em czy D od Dm. Akord trzeba utrzymać ~0,6
 Testowane na syntezowanych nagraniach (także z szumem, rozstrojeniem i słabym basem
 jak w mikrofonie telefonu): 11/11 akordów rozpoznanych, bez mylenia E/Em, D/Dm, Am/Am7.
 Ograniczenie: akordy o wspólnych nutach (np. Am7 i C) mogą się czasem pomylić.
+
+## Aplikacja na Androida (.apk)
+Folder `android/` to mała aplikacja, która wyświetla tę stronę w środku (WebView) i obsługuje
+zgodę na mikrofon. Nie ma uprawnienia do internetu – działa offline.
+Po każdym pushu GitHub Actions (`.github/workflows/android.yml`) buduje APK i wrzuca go
+do zakładki **Releases** jako `TrenerAkordow.apk`.

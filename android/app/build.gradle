@@ -1,0 +1,46 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'pl.akordy.trener'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'pl.akordy.trener'
+        minSdk 26
+        targetSdk 34
+        // Każdy build z GitHuba ma wyższy numer, więc nowa wersja instaluje się na starą
+        versionCode((System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger())
+        versionName "1.0.${System.getenv('GITHUB_RUN_NUMBER') ?: '0'}"
+    }
+
+    // Stały klucz w repo, żeby kolejne wersje dało się instalować jako aktualizacje
+    signingConfigs {
+        release {
+            storeFile file('../trener.keystore')
+            storePassword 'trener-akordow'
+            keyAlias 'trener'
+            keyPassword 'trener-akordow'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    // Strona aplikacji brana prosto z folderu akordy/ – jedna wersja dla www i APK
+    sourceSets {
+        main {
+            assets.srcDirs = ['../../akordy']
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
