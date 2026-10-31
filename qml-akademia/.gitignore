@@ -1,0 +1,4 @@
+# artefakty budowania APK
+build/
+# prywatny klucz podpisu — nie commitujemy
+signing/
