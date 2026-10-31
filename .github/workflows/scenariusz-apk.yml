@@ -1,0 +1,49 @@
+name: Build Scenarzysta APK
+
+on:
+  push:
+    paths:
+      - "scenariusz/**"
+      - ".github/workflows/scenariusz-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scenariusz
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build release APK
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+          cp app/build/outputs/apk/release/app-release.apk Scenarzysta.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Scenarzysta-apk
+          path: scenariusz/Scenarzysta.apk
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: scenariusz-${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          name: Scenarzysta ${{ github.run_number }}
+          body: |
+            Pobierz **Scenarzysta.apk** poniżej i otwórz plik na telefonie z Androidem (8.0+).
+            Jeśli telefon zapyta, zezwól na instalację z tego źródła.
+          files: scenariusz/Scenarzysta.apk
