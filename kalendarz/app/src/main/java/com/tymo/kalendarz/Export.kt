@@ -177,7 +177,7 @@ object Export {
 
     // ---- iCalendar (.ics), importable into Google Calendar, Outlook, Apple Calendar ----
 
-    private fun esc(s: String) = s.replace("\\", "\\\\").replace(";", "\;").replace(",", "\\,").replace("\n", "\\n")
+    private fun esc(s: String) = s.replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\n", "\\n")
     private val icsDate = DateTimeFormatter.ofPattern("yyyyMMdd")
     private val icsDateTime = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss")
 
