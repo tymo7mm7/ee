@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14161c">
+<title>Trener akordów gitarowych</title>
+<style>
+  :root {
+    --bg: #14161c; --card: #1e212b; --line: #2e3240; --text: #eef0f5; --muted: #9aa0b0;
+    --accent: #f5a524; --ok: #3ccf7a; --bad: #ef5b5b; --note: #4b8df8;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { padding: 12px 12px 32px; max-width: 520px; margin: 0 auto; }
+  h1 { font-size: 18px; margin: 4px 0 12px; display: flex; justify-content: space-between; align-items: center; }
+  button { font: inherit; color: inherit; background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 12px 14px; cursor: pointer; }
+  button:active { transform: scale(0.98); }
+  button.primary { background: var(--accent); color: #1a1300; border-color: var(--accent); font-weight: 700; }
+  button.small { padding: 6px 10px; font-size: 14px; border-radius: 10px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin-bottom: 12px; }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  .stats { display: flex; justify-content: space-around; font-size: 13px; color: var(--muted); text-align: center; }
+  .stats b { display: block; font-size: 20px; color: var(--text); }
+  #chordName { font-size: 64px; font-weight: 800; text-align: center; line-height: 1; margin: 4px 0 2px; }
+  #chordSub { text-align: center; color: var(--muted); font-size: 14px; min-height: 18px; }
+  #diagramWrap { display: flex; justify-content: center; margin: 8px 0; position: relative; }
+  #diagram { width: 220px; height: auto; }
+  #diagramWrap.hidden-diagram #diagram { visibility: hidden; }
+  #revealBtn { position: absolute; top: 40%; display: none; }
+  #diagramWrap.hidden-diagram #revealBtn { display: block; }
+  #status { text-align: center; font-size: 16px; min-height: 24px; margin: 6px 0; }
+  #status.ok { color: var(--ok); font-weight: 700; }
+  .progress { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; margin: 6px 0 10px; }
+  .progress > div { height: 100%; width: 0; background: var(--ok); transition: width 0.08s linear; }
+  #chroma { display: grid; grid-template-columns: repeat(12, 1fr); gap: 3px; align-items: end; height: 70px; }
+  #chroma .bar { background: var(--line); border-radius: 3px 3px 0 0; height: 2px; transition: height 0.08s; }
+  #chroma .bar.in { background: var(--note); }
+  #chroma .bar.in.hit { background: var(--ok); }
+  #chroma .bar.out.hit { background: var(--bad); }
+  #chromaLabels { display: grid; grid-template-columns: repeat(12, 1fr); gap: 3px; font-size: 11px; text-align: center; color: var(--muted); margin-top: 3px; }
+  #chromaLabels span.in { color: var(--text); font-weight: 700; }
+  #detected { font-size: 13px; color: var(--muted); text-align: center; margin-top: 6px; min-height: 17px; }
+  #level { height: 4px; background: var(--line); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  #level > div { height: 100%; width: 0; background: var(--muted); }
+  .flash { animation: flash 0.6s ease; }
+  @keyframes flash { 0% { box-shadow: 0 0 0 0 rgba(60,207,122,0.9); } 100% { box-shadow: 0 0 0 18px rgba(60,207,122,0); } }
+  details summary { cursor: pointer; font-weight: 600; }
+  .sets { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+  .sets label, .chips label { background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; font-size: 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips label { padding: 4px 9px; font-size: 13px; }
+  input[type=checkbox] { accent-color: var(--accent); }
+  .opt { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; font-size: 14px; gap: 10px; }
+  .opt input[type=range] { flex: 1; max-width: 55%; }
+  .hint { font-size: 12px; color: var(--muted); line-height: 1.45; }
+  #micBtn.on { background: var(--ok); color: #04210f; border-color: var(--ok); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<h1>🎸 Trener akordów <button class="small" id="listenBtn" title="Posłuchaj jak brzmi">🔊 Posłuchaj</button></h1>
+
+<div class="card stats">
+  <div><b id="stOk">0</b>trafione</div>
+  <div><b id="stStreak">0</b>seria</div>
+  <div><b id="stSkip">0</b>pominięte</div>
+  <div><b id="stTime">–</b>śr. czas</div>
+</div>
+
+<div class="card" id="mainCard">
+  <div id="chordName">C</div>
+  <div id="chordSub"></div>
+  <div id="diagramWrap">
+    <svg id="diagram" viewBox="0 0 200 230" xmlns="http://www.w3.org/2000/svg"></svg>
+    <button class="small" id="revealBtn">Pokaż chwyt</button>
+  </div>
+
+  <div id="status">Włącz mikrofon i zagraj akord</div>
+  <div class="progress"><div id="progress"></div></div>
+
+  <div id="chroma"></div>
+  <div id="chromaLabels"></div>
+  <div id="detected"></div>
+  <div id="level"><div></div></div>
+</div>
+
+<div class="row" style="margin-bottom:12px">
+  <button id="micBtn" class="primary">🎤 Włącz mikrofon</button>
+  <button id="doneBtn">✓ Zagrałem</button>
+  <button id="skipBtn">⏭ Dalej</button>
+</div>
+
+<div class="card">
+  <details>
+    <summary>⚙️ Akordy i ustawienia</summary>
+    <div class="sets" id="sets"></div>
+    <div class="chips" id="chips"></div>
+    <div class="opt"><span>Ukryj chwyt (test z pamięci)</span><input type="checkbox" id="hideDiagram"></div>
+    <div class="opt"><span>Czułość rozpoznawania</span><input type="range" id="sens" min="0" max="100" value="50"></div>
+    <div class="opt"><span>Czas trzymania akordu</span><input type="range" id="hold" min="2" max="15" value="6"><span id="holdVal">0.6 s</span></div>
+    <p class="hint">
+      Jak to działa: aplikacja słucha mikrofonu, rozkłada dźwięk na 12 nut (C, C#, D…) i sprawdza,
+      czy brzmią nuty z akordu. Niebieskie słupki to nuty, które powinny grać; zielone – grają;
+      czerwone – grają, a nie powinny (np. struna, której nie wolno uderzać, albo zły próg).
+      Najlepiej działa przy nastrojonej gitarze i w cichym pomieszczeniu – uderz akord i pozwól mu wybrzmieć.
+      Rozpoznawanie patrzy na nuty, nie na konkretny chwyt, więc inna pozycja tego samego akordu też zostanie zaliczona.
+    </p>
+  </details>
+</div>
+
+<script>
+"use strict";
+
+// ---------- Muzyka ---------- ALGO-START
+const NOTE_NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+const OPEN_MIDI = [40, 45, 50, 55, 59, 64]; // E2 A2 D3 G3 B3 E4
+const STRING_NAMES = ["E","A","D","G","H","e"];
+
+// frets: od najgrubszej struny (E) do najcieńszej (e); -1 = nie grać, 0 = pusta
+const CHORDS = [
+  // podstawowe
+  { name: "C",  frets: [-1,3,2,0,1,0], fingers: [0,3,2,0,1,0], set: "basic" },
+  { name: "D",  frets: [-1,-1,0,2,3,2], fingers: [0,0,0,1,3,2], set: "basic" },
+  { name: "E",  frets: [0,2,2,1,0,0], fingers: [0,2,3,1,0,0], set: "basic" },
+  { name: "G",  frets: [3,2,0,0,0,3], fingers: [2,1,0,0,0,3], set: "basic" },
+  { name: "A",  frets: [-1,0,2,2,2,0], fingers: [0,0,1,2,3,0], set: "basic" },
+  { name: "Am", frets: [-1,0,2,2,1,0], fingers: [0,0,2,3,1,0], set: "basic" },
+  { name: "Em", frets: [0,2,2,0,0,0], fingers: [0,2,3,0,0,0], set: "basic" },
+  { name: "Dm", frets: [-1,-1,0,2,3,1], fingers: [0,0,0,2,3,1], set: "basic" },
+  // septymowe
+  { name: "A7",  frets: [-1,0,2,0,2,0], fingers: [0,0,2,0,3,0], set: "seventh" },
+  { name: "D7",  frets: [-1,-1,0,2,1,2], fingers: [0,0,0,2,1,3], set: "seventh" },
+  { name: "E7",  frets: [0,2,0,1,0,0], fingers: [0,2,0,1,0,0], set: "seventh" },
+  { name: "G7",  frets: [3,2,0,0,0,1], fingers: [3,2,0,0,0,1], set: "seventh" },
+  { name: "C7",  frets: [-1,3,2,3,1,0], fingers: [0,3,2,4,1,0], set: "seventh" },
+  { name: "B7",  frets: [-1,2,1,2,0,2], fingers: [0,2,1,3,0,4], set: "seventh" },
+  { name: "Am7", frets: [-1,0,2,0,1,0], fingers: [0,0,2,0,1,0], set: "seventh" },
+  { name: "Em7", frets: [0,2,0,0,0,0], fingers: [0,2,0,0,0,0], set: "seventh" },
+  { name: "Dm7", frets: [-1,-1,0,2,1,1], fingers: [0,0,0,2,1,1], set: "seventh" },
+  { name: "Cmaj7", frets: [-1,3,2,0,0,0], fingers: [0,3,2,0,0,0], set: "seventh" },
+  { name: "Fmaj7", frets: [-1,-1,3,2,1,0], fingers: [0,0,3,2,1,0], set: "seventh" },
+  { name: "Amaj7", frets: [-1,0,2,1,2,0], fingers: [0,0,2,1,3,0], set: "seventh" },
+  // sus / add
+  { name: "Dsus2", frets: [-1,-1,0,2,3,0], fingers: [0,0,0,1,3,0], set: "sus" },
+  { name: "Dsus4", frets: [-1,-1,0,2,3,3], fingers: [0,0,0,1,3,4], set: "sus" },
+  { name: "Asus2", frets: [-1,0,2,2,0,0], fingers: [0,0,1,2,0,0], set: "sus" },
+  { name: "Asus4", frets: [-1,0,2,2,3,0], fingers: [0,0,1,2,3,0], set: "sus" },
+  { name: "Esus4", frets: [0,2,2,2,0,0], fingers: [0,2,3,4,0,0], set: "sus" },
+  { name: "Cadd9", frets: [-1,3,2,0,3,0], fingers: [0,2,1,0,3,0], set: "sus" },
+  // barre
+  { name: "F",  frets: [1,3,3,2,1,1], fingers: [1,3,4,2,1,1], barre: { fret: 1, from: 0, to: 5 }, set: "barre" },
+  { name: "Fm", frets: [1,3,3,1,1,1], fingers: [1,3,4,1,1,1], barre: { fret: 1, from: 0, to: 5 }, set: "barre" },
+  { name: "Bm", frets: [-1,2,4,4,3,2], fingers: [0,1,3,4,2,1], barre: { fret: 2, from: 1, to: 5 }, set: "barre" },
+  { name: "B",  frets: [-1,2,4,4,4,2], fingers: [0,1,2,3,4,1], barre: { fret: 2, from: 1, to: 5 }, set: "barre" },
+  { name: "F#m", frets: [2,4,4,2,2,2], fingers: [1,3,4,1,1,1], barre: { fret: 2, from: 0, to: 5 }, set: "barre" },
+  { name: "Gm", frets: [3,5,5,3,3,3], fingers: [1,3,4,1,1,1], barre: { fret: 3, from: 0, to: 5 }, set: "barre" },
+  { name: "Cm", frets: [-1,3,5,5,4,3], fingers: [0,1,3,4,2,1], barre: { fret: 3, from: 1, to: 5 }, set: "barre" },
+];
+
+const SETS = [
+  { id: "basic", label: "Podstawowe" },
+  { id: "seventh", label: "Septymowe" },
+  { id: "sus", label: "Sus / add9" },
+  { id: "barre", label: "Barré" },
+];
+
+// Wzorce do porównania (żeby odróżnić np. Am od C czy E od Em)
+const QUALITIES = {
+  "": [0,4,7], "m": [0,3,7], "7": [0,4,7,10], "maj7": [0,4,7,11], "m7": [0,3,7,10],
+  "sus2": [0,2,7], "sus4": [0,5,7], "add9": [0,2,4,7], "5": [0,7],
+};
+
+function parseName(name) {
+  const m = name.match(/^([A-G])(#|b)?(.*)$/);
+  let root = NOTE_NAMES.indexOf(m[1]);
+  if (m[2] === "#") root = (root + 1) % 12;
+  if (m[2] === "b") root = (root + 11) % 12;
+  return { root, quality: m[3] };
+}
+
+// Notacja polska: B -> H, minor małą literą (Am -> a)
+function polishName(name) {
+  const m = name.match(/^([A-G])(#|b)?(.*)$/);
+  let root = m[1] + (m[2] || "");
+  if (root === "B") root = "H";
+  let rest = m[3];
+  if (/^m(?!aj)/.test(rest)) { root = root.toLowerCase(); rest = rest.slice(1); }
+  return root + rest;
+}
+
+function chordMidi(ch) {
+  return ch.frets.map((f, i) => f < 0 ? null : OPEN_MIDI[i] + f).filter(n => n !== null);
+}
+
+const CANDIDATES = [];
+for (let r = 0; r < 12; r++) {
+  for (const [q, iv] of Object.entries(QUALITIES)) {
+    CANDIDATES.push({ name: NOTE_NAMES[r] + q, root: r, pcs: iv.map(i => (i + r) % 12) });
+  }
+}
+for (const ch of CHORDS) {
+  ch.pcs = [...new Set(chordMidi(ch).map(n => n % 12))];
+  ch.root = parseName(ch.name).root;
+}
+
+function templateVec(pcs, root) {
+  const v = new Float32Array(12);
+  for (const p of pcs) v[p] = 1;
+  if (root != null) v[root] = 1.15; // pryma zwykle brzmi najmocniej
+  return v;
+}
+function cosine(a, b) {
+  let d = 0, na = 0, nb = 0;
+  for (let i = 0; i < 12; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
+  return na && nb ? d / Math.sqrt(na * nb) : 0;
+}
+for (const c of CANDIDATES) c.vec = templateVec(c.pcs, c.root);
+for (const c of CHORDS) c.vec = templateVec(c.pcs, c.root);
+
+// ---------- Diagram ----------
+function drawDiagram(ch) {
+  const svg = document.getElementById("diagram");
+  const X0 = 30, W = 140, Y0 = 40, H = 160, FRETS = 5;
+  const sx = i => X0 + (W / 5) * i;
+  const fy = f => Y0 + (H / FRETS) * f;
+  const played = ch.frets.filter(f => f > 0);
+  const maxF = played.length ? Math.max(...played) : 0;
+  const base = maxF > FRETS ? Math.min(...played) : 1;
+  let s = "";
+  // progi
+  for (let f = 0; f <= FRETS; f++) {
+    const w = (f === 0 && base === 1) ? 6 : 1.5;
+    s += `<line x1="${X0}" y1="${fy(f)}" x2="${X0 + W}" y2="${fy(f)}" stroke="#cfd3dc" stroke-width="${w}" stroke-linecap="round"/>`;
+  }
+  if (base > 1) s += `<text x="${X0 - 8}" y="${fy(0.5) + 5}" fill="#9aa0b0" font-size="14" text-anchor="end">${base}</text>`;
+  // struny
+  for (let i = 0; i < 6; i++) {
+    s += `<line x1="${sx(i)}" y1="${fy(0)}" x2="${sx(i)}" y2="${fy(FRETS)}" stroke="#cfd3dc" stroke-width="${1 + (5 - i) * 0.35}"/>`;
+    s += `<text x="${sx(i)}" y="${fy(FRETS) + 22}" fill="#9aa0b0" font-size="13" text-anchor="middle">${STRING_NAMES[i]}</text>`;
+    const f = ch.frets[i];
+    if (f < 0) s += `<text x="${sx(i)}" y="${Y0 - 12}" fill="#ef5b5b" font-size="18" font-weight="700" text-anchor="middle">×</text>`;
+    else if (f === 0) s += `<circle cx="${sx(i)}" cy="${Y0 - 18}" r="7" fill="none" stroke="#cfd3dc" stroke-width="2"/>`;
+  }
+  // barré
+  if (ch.barre) {
+    const y = fy(ch.barre.fret - base + 0.5);
+    s += `<rect x="${sx(ch.barre.from) - 12}" y="${y - 12}" width="${sx(ch.barre.to) - sx(ch.barre.from) + 24}" height="24" rx="12" fill="#f5a524"/>`;
+    s += `<text x="${(sx(ch.barre.from) + sx(ch.barre.to)) / 2}" y="${y + 5}" fill="#1a1300" font-size="14" font-weight="700" text-anchor="middle">1</text>`;
+  }
+  // palce
+  for (let i = 0; i < 6; i++) {
+    const f = ch.frets[i];
+    if (f <= 0) continue;
+    if (ch.barre && f === ch.barre.fret && i >= ch.barre.from && i <= ch.barre.to) continue;
+    const y = fy(f - base + 0.5);
+    s += `<circle cx="${sx(i)}" cy="${y}" r="12" fill="#f5a524"/>`;
+    if (ch.fingers && ch.fingers[i]) s += `<text x="${sx(i)}" y="${y + 5}" fill="#1a1300" font-size="14" font-weight="700" text-anchor="middle">${ch.fingers[i]}</text>`;
+  }
+  svg.innerHTML = s;
+}
+
+// ---------- Synteza (Karplus-Strong) ----------
+let audioCtx = null;
+function getCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === "suspended") audioCtx.resume();
+  return audioCtx;
+}
+function playChord(ch) {
+  const ctx = getCtx(), sr = ctx.sampleRate;
+  const notes = chordMidi(ch), dur = 2.5, strum = 0.035;
+  const buf = ctx.createBuffer(1, Math.floor(sr * (dur + strum * 6)), sr);
+  const out = buf.getChannelData(0);
+  notes.forEach((midi, k) => {
+    const freq = 440 * Math.pow(2, (midi - 69) / 12);
+    const N = Math.round(sr / freq), y = new Float32Array(Math.floor(sr * dur));
+    for (let i = 0; i < N; i++) y[i] = Math.random() * 2 - 1;
+    for (let i = N; i < y.length; i++) y[i] = 0.498 * (y[i - N] + y[i - N + 1]);
+    const off = Math.floor(k * strum * sr);
+    for (let i = 0; i < y.length; i++) out[off + i] += y[i] * 0.18;
+  });
+  const src = ctx.createBufferSource();
+  src.buffer = buf; src.connect(ctx.destination); src.start();
+}
+
+// ---------- Rozpoznawanie z mikrofonu ----------
+const FFT_SIZE = 32768;
+let analyser = null, micStream = null, freqData = null, timeData = null;
+let smoothChroma = new Float32Array(12);
+let noiseFloor = 0.004;
+
+// Zamienia widmo na "chromagram": ile energii ma każda z 12 nut (niezależnie od oktawy).
+// 1) szuka szczytów w widmie i dokładnie wylicza ich częstotliwość,
+// 2) wycisza alikwoty (np. 3. i 5. harmoniczną niskiej struny, które udają inne nuty),
+// 3) przypisuje resztę do najbliższej nuty.
+function computeChroma(db, sampleRate, fftSize) {
+  const chroma = new Float32Array(12);
+  const binHz = sampleRate / fftSize;
+  const lo = Math.max(1, Math.floor(70 / binHz)), hi = Math.min(db.length - 2, Math.ceil(2200 / binHz));
+  let maxDb = -Infinity;
+  for (let i = lo; i <= hi; i++) if (db[i] > maxDb) maxDb = db[i];
+  const floorDb = maxDb - ALGO.rangeDb;
+  const peaks = [];
+  for (let i = lo; i <= hi; i++) {
+    const b = db[i];
+    if (b < floorDb || b <= db[i - 1] || b < db[i + 1]) continue;
+    const a = db[i - 1], c = db[i + 1], den = a - 2 * b + c;
+    const p = den !== 0 ? 0.5 * (a - c) / den : 0;
+    peaks.push({ f: (i + p) * binHz, amp: Math.pow(10, (b - maxDb) / 20), w: 1 });
+  }
+  for (let j = 0; j < peaks.length; j++) {
+    for (let i = 0; i < j; i++) {
+      if (peaks[i].w < 1 || peaks[i].amp < peaks[j].amp * ALGO.harmRel) continue;
+      const r = peaks[j].f / peaks[i].f, h = Math.round(r);
+      if (h < 2 || h > 12 || (h & (h - 1)) === 0) continue; // oktawy zostawiamy – ta sama nuta
+      if (Math.abs(1200 * Math.log2(r / h)) < 25) { peaks[j].w = ALGO.harmW; break; }
+    }
+  }
+  for (const pk of peaks) {
+    const midi = 69 + 12 * Math.log2(pk.f / 440);
+    const nearest = Math.round(midi), cents = (midi - nearest) * 100;
+    const fw = pk.f < ALGO.fKnee ? 1 : ALGO.fKnee / pk.f;
+    chroma[((nearest % 12) + 12) % 12] += Math.pow(pk.amp, ALGO.ampPow) * pk.w * fw * Math.exp(-(cents / 30) * (cents / 30));
+  }
+  return chroma;
+}
+const ALGO = { rangeDb: 40, harmRel: 0.3, harmW: 0.15, fKnee: 500, ampPow: 1 };
+
+function analyzeChroma(chroma) {
+  let sum = 0;
+  for (let i = 0; i < 12; i++) sum += chroma[i];
+  if (sum <= 0) return null;
+  let best = null, bestScore = -1;
+  for (const c of CANDIDATES) {
+    const s = cosine(chroma, c.vec);
+    if (s > bestScore) { bestScore = s; best = c; }
+  }
+  return { best, bestScore };
+}
+
+// Czy chromagram pasuje do zadanego akordu?
+function matchChord(chroma, ch, sensitivity) {
+  const res = analyzeChroma(chroma);
+  if (!res) return { ok: false, score: 0, res };
+  const score = cosine(chroma, ch.vec);
+  let sum = 0, inSum = 0, minTone = Infinity, maxV = 0;
+  for (let i = 0; i < 12; i++) { sum += chroma[i]; if (chroma[i] > maxV) maxV = chroma[i]; }
+  for (const p of ch.pcs) { inSum += chroma[p]; minTone = Math.min(minTone, chroma[p] / maxV); }
+  const inFrac = inSum / sum;
+  // sensitivity 0..1 – im wyżej, tym łagodniej
+  const thrScore = 0.86 - 0.16 * sensitivity;
+  const thrIn = 0.80 - 0.18 * sensitivity;
+  const thrTone = 0.10 - 0.07 * sensitivity;
+  const nearBest = score >= res.bestScore - (0.02 + 0.04 * sensitivity);
+  const ok = score >= thrScore && inFrac >= thrIn && minTone >= thrTone && nearBest;
+  return { ok, score, inFrac, minTone, res };
+}
+
+// ALGO-END
+async function startMic() {
+  const ctx = getCtx();
+  micStream = await navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+  });
+  const src = ctx.createMediaStreamSource(micStream);
+  analyser = ctx.createAnalyser();
+  analyser.fftSize = FFT_SIZE;
+  analyser.smoothingTimeConstant = 0.3;
+  analyser.minDecibels = -110;
+  src.connect(analyser);
+  freqData = new Float32Array(analyser.frequencyBinCount);
+  timeData = new Float32Array(2048);
+  // krótka kalibracja szumu tła
+  const samples = [];
+  const t0 = performance.now();
+  await new Promise(resolve => {
+    (function tick() {
+      analyser.getFloatTimeDomainData(timeData);
+      samples.push(rms(timeData));
+      if (performance.now() - t0 < 700) requestAnimationFrame(tick); else resolve();
+    })();
+  });
+  samples.sort((a, b) => a - b);
+  noiseFloor = Math.min(0.02, Math.max(0.002, samples[Math.floor(samples.length / 2)] * 2.5));
+}
+function stopMic() {
+  if (micStream) micStream.getTracks().forEach(t => t.stop());
+  micStream = null; analyser = null;
+}
+function rms(arr) {
+  let s = 0;
+  for (let i = 0; i < arr.length; i++) s += arr[i] * arr[i];
+  return Math.sqrt(s / arr.length);
+}
+
+// ---------- Stan gry ----------
+const $ = id => document.getElementById(id);
+const state = {
+  enabled: new Set(CHORDS.filter(c => c.set === "basic").map(c => c.name)),
+  current: null, startTime: 0, holdTime: 0, solved: false,
+  ok: 0, streak: 0, skip: 0, times: [], last: performance.now(),
+};
+
+function loadPrefs() {
+  try {
+    const p = JSON.parse(localStorage.getItem("chordTrainer") || "{}");
+    if (Array.isArray(p.enabled) && p.enabled.length) state.enabled = new Set(p.enabled.filter(n => CHORDS.some(c => c.name === n)));
+    if (p.sens != null) $("sens").value = p.sens;
+    if (p.hold != null) $("hold").value = p.hold;
+    if (p.hide != null) $("hideDiagram").checked = p.hide;
+  } catch (e) {}
+  if (!state.enabled.size) state.enabled.add("C");
+}
+function savePrefs() {
+  localStorage.setItem("chordTrainer", JSON.stringify({
+    enabled: [...state.enabled], sens: +$("sens").value, hold: +$("hold").value, hide: $("hideDiagram").checked,
+  }));
+}
+
+function buildSettings() {
+  $("sets").innerHTML = SETS.map(s =>
+    `<label><input type="checkbox" data-set="${s.id}"> ${s.label}</label>`).join("");
+  $("chips").innerHTML = CHORDS.map(c =>
+    `<label><input type="checkbox" data-chord="${c.name}"> ${c.name}</label>`).join("");
+  const refresh = () => {
+    document.querySelectorAll("[data-chord]").forEach(el => el.checked = state.enabled.has(el.dataset.chord));
+    document.querySelectorAll("[data-set]").forEach(el => {
+      const names = CHORDS.filter(c => c.set === el.dataset.set).map(c => c.name);
+      const n = names.filter(x => state.enabled.has(x)).length;
+      el.checked = n === names.length; el.indeterminate = n > 0 && n < names.length;
+    });
+  };
+  document.querySelectorAll("[data-chord]").forEach(el => el.addEventListener("change", () => {
+    if (el.checked) state.enabled.add(el.dataset.chord);
+    else if (state.enabled.size > 1) state.enabled.delete(el.dataset.chord);
+    refresh(); savePrefs();
+  }));
+  document.querySelectorAll("[data-set]").forEach(el => el.addEventListener("change", () => {
+    const names = CHORDS.filter(c => c.set === el.dataset.set).map(c => c.name);
+    names.forEach(n => el.checked ? state.enabled.add(n) : state.enabled.delete(n));
+    if (!state.enabled.size) state.enabled.add(names[0]);
+    refresh(); savePrefs();
+    if (!state.enabled.has(state.current.name)) nextChord();
+  }));
+  refresh();
+  $("chroma").innerHTML = NOTE_NAMES.map(() => `<div class="bar"></div>`).join("");
+  $("chromaLabels").innerHTML = NOTE_NAMES.map(n => `<span>${n === "B" ? "H" : n}</span>`).join("");
+}
+
+function nextChord(forced) {
+  const pool = CHORDS.filter(c => state.enabled.has(c.name) && (!state.current || c.name !== state.current.name || state.enabled.size === 1));
+  const ch = forced || pool[Math.floor(Math.random() * pool.length)];
+  state.current = ch;
+  state.startTime = performance.now();
+  state.holdTime = 0;
+  state.solved = false;
+  smoothChroma.fill(0);
+  $("chordName").textContent = ch.name;
+  const notes = ch.pcs.slice().sort((a, b) => ((a - ch.root + 12) % 12) - ((b - ch.root + 12) % 12))
+    .map(p => NOTE_NAMES[p] === "B" ? "H" : NOTE_NAMES[p]).join(" · ");
+  const pl = polishName(ch.name);
+  $("chordSub").textContent = (pl !== ch.name ? `PL: ${pl}  ·  ` : "") + `nuty: ${notes}`;
+  drawDiagram(ch);
+  $("diagramWrap").classList.toggle("hidden-diagram", $("hideDiagram").checked);
+  document.querySelectorAll("#chroma .bar").forEach((b, i) => {
+    b.className = "bar " + (ch.pcs.includes(i) ? "in" : "out");
+  });
+  document.querySelectorAll("#chromaLabels span").forEach((s, i) => s.className = ch.pcs.includes(i) ? "in" : "");
+  setStatus(analyser ? "Zagraj akord…" : "Włącz mikrofon albo kliknij „Zagrałem”");
+  $("progress").style.width = "0";
+  $("detected").textContent = "";
+}
+
+function setStatus(t, cls) { const s = $("status"); s.textContent = t; s.className = cls || ""; }
+
+function updateStats() {
+  $("stOk").textContent = state.ok;
+  $("stStreak").textContent = state.streak;
+  $("stSkip").textContent = state.skip;
+  const t = state.times.slice(-20);
+  $("stTime").textContent = t.length ? (t.reduce((a, b) => a + b, 0) / t.length).toFixed(1) + "s" : "–";
+}
+
+function success() {
+  if (state.solved) return;
+  state.solved = true;
+  state.ok++; state.streak++;
+  state.times.push((performance.now() - state.startTime) / 1000);
+  updateStats();
+  setStatus("✅ Brawo! " + state.current.name, "ok");
+  $("progress").style.width = "100%";
+  $("diagramWrap").classList.remove("hidden-diagram");
+  const card = $("mainCard");
+  card.classList.remove("flash"); void card.offsetWidth; card.classList.add("flash");
+  if (navigator.vibrate) navigator.vibrate(60);
+  setTimeout(nextChord, 1300);
+}
+
+function loop(now) {
+  const dt = Math.min(0.1, (now - state.last) / 1000);
+  state.last = now;
+  if (analyser && state.current && !state.solved) {
+    analyser.getFloatTimeDomainData(timeData);
+    const level = rms(timeData);
+    $("level").firstElementChild.style.width = Math.min(100, level / (noiseFloor * 10) * 100) + "%";
+    const bars = document.querySelectorAll("#chroma .bar");
+    if (level > noiseFloor) {
+      analyser.getFloatFrequencyData(freqData);
+      const c = computeChroma(freqData, audioCtx.sampleRate, FFT_SIZE);
+      let sum = 0; for (let i = 0; i < 12; i++) sum += c[i];
+      if (sum > 0) for (let i = 0; i < 12; i++) smoothChroma[i] = 0.55 * smoothChroma[i] + 0.45 * c[i] / sum;
+      const sens = +$("sens").value / 100;
+      const m = matchChord(smoothChroma, state.current, sens);
+      const maxV = Math.max(...smoothChroma) || 1;
+      bars.forEach((b, i) => {
+        const h = smoothChroma[i] / maxV;
+        b.style.height = Math.max(2, h * 70) + "px";
+        b.classList.toggle("hit", h > 0.12);
+      });
+      if (m.res) $("detected").textContent = `Słyszę: ${m.res.best.name.replace(/^B/, "H")}  ·  zgodność ${(m.score * 100).toFixed(0)}%`;
+      if (m.ok) {
+        state.holdTime += dt;
+        setStatus("Dobrze, trzymaj…");
+      } else {
+        state.holdTime = Math.max(0, state.holdTime - dt * 1.5);
+        const missing = state.current.pcs.filter(p => smoothChroma[p] / maxV < 0.12).map(p => NOTE_NAMES[p] === "B" ? "H" : NOTE_NAMES[p]);
+        setStatus(missing.length ? `Brakuje: ${missing.join(", ")}` : "Coś nie gra – sprawdź czerwone nuty");
+      }
+    } else {
+      state.holdTime = Math.max(0, state.holdTime - dt);
+      for (let i = 0; i < 12; i++) smoothChroma[i] *= 0.9;
+      bars.forEach(b => { b.style.height = "2px"; b.classList.remove("hit"); });
+      setStatus("Zagraj akord…");
+    }
+    const need = +$("hold").value / 10;
+    $("progress").style.width = Math.min(100, state.holdTime / need * 100) + "%";
+    if (state.holdTime >= need) success();
+  }
+  requestAnimationFrame(loop);
+}
+
+// ---------- UI ----------
+$("micBtn").addEventListener("click", async () => {
+  const btn = $("micBtn");
+  if (analyser) { stopMic(); btn.classList.remove("on"); btn.textContent = "🎤 Włącz mikrofon"; setStatus("Mikrofon wyłączony"); return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    setStatus("Przeglądarka nie daje dostępu do mikrofonu (potrzebny HTTPS)"); return;
+  }
+  try {
+    btn.textContent = "Kalibracja…"; setStatus("Cisza… mierzę szum tła");
+    await startMic();
+    btn.classList.add("on"); btn.textContent = "🎤 Słucham";
+    setStatus("Zagraj akord…");
+  } catch (e) {
+    btn.textContent = "🎤 Włącz mikrofon";
+    setStatus("Brak dostępu do mikrofonu: " + e.message);
+  }
+});
+$("doneBtn").addEventListener("click", success);
+$("skipBtn").addEventListener("click", () => { state.skip++; state.streak = 0; updateStats(); nextChord(); });
+$("listenBtn").addEventListener("click", () => state.current && playChord(state.current));
+$("revealBtn").addEventListener("click", () => $("diagramWrap").classList.remove("hidden-diagram"));
+$("hideDiagram").addEventListener("change", () => { savePrefs(); $("diagramWrap").classList.toggle("hidden-diagram", $("hideDiagram").checked && !state.solved); });
+$("sens").addEventListener("change", savePrefs);
+$("hold").addEventListener("input", () => { $("holdVal").textContent = (+$("hold").value / 10).toFixed(1) + " s"; savePrefs(); });
+
+loadPrefs();
+$("holdVal").textContent = (+$("hold").value / 10).toFixed(1) + " s";
+buildSettings();
+nextChord();
+updateStats();
+requestAnimationFrame(loop);
+
+// do testów
+window.__chordTrainer = { CHORDS, state, setChord: n => nextChord(CHORDS.find(c => c.name === n)), setNoise: v => { noiseFloor = v; } };
+</script>
+</body>
+</html>
